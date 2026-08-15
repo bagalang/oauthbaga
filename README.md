@@ -89,3 +89,7 @@ maps (L4, O3); `TokenReply`/`PxTokens` are L3 stand-ins (O4); nodes stay
 serial — the CSRF `states` map is the last thing keeping them from a
 worker pool (O5); per-connection DB costs a SCRAM handshake per request
 (O7).
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Dim Gigov.
