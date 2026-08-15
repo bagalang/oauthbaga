@@ -6,6 +6,24 @@ by tplbaga (№7). Two nodes on loopback: an authorization **provider**
 and a confidential-client **proxy**. Dev profile: auto-approve, plain
 HTTP (TLS waits on G6), one registered client.
 
+This repository is the product. The compiler, `std`, `httpdbaga`,
+`jwtbaga`, `tplbaga`, `ormbaga`, and `pgbaga` stay in the baga
+language monorepo. Check this tree out as `app-product/oauthbaga`
+there (git submodule) so path deps and `-I app-product` keep working.
+
+## Checkout
+
+Inside a baga language clone:
+
+```bash
+git submodule update --init --recursive
+# or, first time from a fresh baga tree without the submodule recorded:
+git clone git@github.com:bagalang/oauthbaga.git app-product/oauthbaga
+```
+
+`sandak.toml` keeps path deps so the shared packages stay in baga.
+`tests/oauth_test.baga` and `tests/oauth_pg_test.baga` also stay in baga.
+
 ## Endpoints
 
 | Node | Route | Meaning |
