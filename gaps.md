@@ -18,19 +18,12 @@ serve plain HTTP; putting them on TLS needs a server-side stack (out of
 scope — client G6 was the roadmap blocker). Real public CAs need a trust
 store (also out of scope for the probe).
 
-## O2 — no URL percent-coding anywhere in std
+## O2 — no URL percent-coding anywhere in std — **closed 2026-08-24**
 
-**Symptom.** `redirect_uri`, `state`, form bodies travel raw. It works
-because the generated values carry no `&`/`=`/`%`, but a user-supplied
-`sub` or scope with a space/`&` would corrupt the query/form.
-
-**Workaround.** Controlled alphabet in the dev profile.
-
-**Severity.** Medium-high for anything user-facing.
-
-**Verdict.** Small `std/net/url` (`url_encode`/`url_decode`) — local,
-high-leverage; the third time query parsing was hand-rolled (httpdbaga
-G7, oa_form here).
+**Shipped.** `std/net/url` encodes; oauthbaga 0.3.0 parses/builds query
+and form bodies with `querybaga` (`oa_form`, `oa_qparam`,
+`px_authorize_url`, token POST). `redirect_uri` in the token form must
+match the registered URI when present. `sub=alice%20x` round-trips.
 
 ## O3 — JSON records in Map<str,str> instead of struct values (L4)
 

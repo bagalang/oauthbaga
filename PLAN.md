@@ -1,7 +1,7 @@
 # oauthbaga — OAuth proxy (plan)
 
-Date: 2026-08-04
-Status: P0 + P1 done (provider + proxy; Postgres persistence live-tested)
+Date: 2026-08-24
+Status: P0 + P1 done; P2 partial (0.3.0 — percent-coding + JWT accept)
 Goal: apps-roadmap **№10** — the integration exam: HTTP client (№2) +
 jwtbaga + sessions, pages through tplbaga (№7 feeds №10, rule 4).
 
@@ -40,8 +40,11 @@ jwtbaga + sessions, pages through tplbaga (№7 feeds №10, rule 4).
   shared between threads. The demo pre-migrates once so the two nodes
   don't race on the version insert at boot.
 
-### P2 — the TLS leg (G6)
+### P2 — the TLS leg (G6) — partial in 0.3.0
 
+- Query/form percent-coding via `querybaga` (O2). **Shipped.**
+- Access tokens accepted with `jwt_accept_hs256` (`iss=oauthbaga`).
+  **Shipped.**
 - https everywhere; talk to real external providers.
 - PKCE (code verifier/challenge), a real consent screen instead of the
   `sub=` dev shortcut, token revocation endpoint.

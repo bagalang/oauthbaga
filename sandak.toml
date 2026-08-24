@@ -1,6 +1,6 @@
 [package]
 name = "oauthbaga"
-version = "0.2.0"
+version = "0.3.0"
 entry = "server.baga"
 
 [dependencies]
@@ -10,3 +10,5 @@ jwtbaga = { path = "../jwtbaga" }
 tplbaga = { path = "../tplbaga" }
 ormbaga = { path = "../ormbaga" }
 pgbaga = { path = "../pgbaga" }
+querybaga = { path = "../querybaga" }
+bufbaga = { path = "../bufbaga" }

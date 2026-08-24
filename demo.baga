@@ -15,7 +15,7 @@ fn demo_port(name: str, def: i64) -> i64 !IO {
         return def
     }
     let v = parse_int(s)
-    if v <= 0 {
+    if v < 1 || v > 65535 {
         return def
     }
     return v

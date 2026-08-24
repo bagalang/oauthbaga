@@ -9,8 +9,9 @@
 import "oauth.baga"
 import "tplbaga/tpl.baga"
 import "ormbaga/orm.baga"
+import "querybaga/query.baga"
+import "bufbaga/buf.baga"
 import "std/net/http_client.baga"
-import "std/net/url.baga"
 import "std/json/json.baga"
 import "std/json/json_write.baga"
 import "std/json/json_strict.baga"
@@ -179,12 +180,16 @@ fn px_cookie(header: str, name: str) -> str {
 // ---------- authorize + token calls ----------
 
 fn px_authorize_url(cfg: OAuthCfg, state: str) -> str {
-    let mut u = concat(cfg.provider_base, "/oauth/authorize?client_id=")
-    u = concat(u, cfg.client_id)
-    u = concat(u, concat("&redirect_uri=", url_encode(cfg.redirect_uri)))
-    u = concat(u, concat("&state=", state))
-    u = concat(u, "&scope=read")
-    return u
+    let mut q = query_new()
+    q = query_add(q, "client_id", cfg.client_id)
+    q = query_add(q, "redirect_uri", cfg.redirect_uri)
+    q = query_add(q, "response_type", "code")
+    q = query_add(q, "state", state)
+    q = query_add(q, "scope", "read")
+    let mut u = buf_from(cfg.provider_base)
+    u = buf_push(u, "/oauth/authorize?")
+    u = buf_push(u, query_encode(q))
+    return buf_str(u)
 }
 
 struct PxTokens {
@@ -230,31 +235,34 @@ fn px_call_token(cfg: OAuthCfg, form: str) -> PxTokens !Net !IO !Random {
 }
 
 fn px_exchange_code(cfg: OAuthCfg, code: str) -> PxTokens !Net !IO !Random {
-    let mut form = "grant_type=authorization_code"
-    form = concat(form, concat("&code=", code))
-    form = concat(form, concat("&client_id=", cfg.client_id))
-    form = concat(form, concat("&client_secret=", cfg.client_secret))
-    return px_call_token(cfg, form)?
+    let mut q = query_new()
+    q = query_add(q, "grant_type", "authorization_code")
+    q = query_add(q, "code", code)
+    q = query_add(q, "client_id", cfg.client_id)
+    q = query_add(q, "client_secret", cfg.client_secret)
+    q = query_add(q, "redirect_uri", cfg.redirect_uri)
+    return px_call_token(cfg, query_encode_form(q))?
 }
 
 fn px_refresh(cfg: OAuthCfg, refresh: str) -> PxTokens !Net !IO !Random {
-    let mut form = "grant_type=refresh_token"
-    form = concat(form, concat("&refresh_token=", refresh))
-    form = concat(form, concat("&client_id=", cfg.client_id))
-    form = concat(form, concat("&client_secret=", cfg.client_secret))
-    return px_call_token(cfg, form)?
+    let mut q = query_new()
+    q = query_add(q, "grant_type", "refresh_token")
+    q = query_add(q, "refresh_token", refresh)
+    q = query_add(q, "client_id", cfg.client_id)
+    q = query_add(q, "client_secret", cfg.client_secret)
+    return px_call_token(cfg, query_encode_form(q))?
 }
 
 // ---------- pages (tplbaga, apps-roadmap №7) ----------
 
 fn px_tpl_home() -> str {
-    let mut t = "<!DOCTYPE html>\n<html>\n<head><meta charset=\"utf-8\" />"
-    t = concat(t, "<title>oauthbaga</title></head>\n<body>\n<h1>oauthbaga proxy</h1>\n")
-    t = concat(t, "{% if sub %}<p>Logged in as <b>{{ sub }}</b> (scope: {{ scope }}).</p>\n")
-    t = concat(t, "<p><a href=\"/logout\">log out</a></p>{% else %}")
-    t = concat(t, "<p>Not logged in.</p>\n<p><a href=\"/login\">log in</a></p>{% endif %}\n")
-    t = concat(t, "</body>\n</html>\n")
-    return t
+    let mut t = buf_from("<!DOCTYPE html>\n<html>\n<head><meta charset=\"utf-8\" />")
+    t = buf_push(t, "<title>oauthbaga</title></head>\n<body>\n<h1>oauthbaga proxy</h1>\n")
+    t = buf_push(t, "{% if sub %}<p>Logged in as <b>{{ sub }}</b> (scope: {{ scope }}).</p>\n")
+    t = buf_push(t, "<p><a href=\"/logout\">log out</a></p>{% else %}")
+    t = buf_push(t, "<p>Not logged in.</p>\n<p><a href=\"/login\">log in</a></p>{% endif %}\n")
+    t = buf_push(t, "</body>\n</html>\n")
+    return buf_str(t)
 }
 
 fn px_render_home(sub: str, scope: str) -> str {

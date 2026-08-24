@@ -18,8 +18,9 @@ import "schema.baga"
 import "httpdbaga/http.baga"
 import "ormbaga/orm.baga"
 import "ormbaga/migrate.baga"
+import "querybaga/query.baga"
+import "bufbaga/buf.baga"
 import "std/net/tcp.baga"
-import "std/net/url.baga"
 import "std/str/str.baga"
 import "std/json/json.baga"
 import "std/json/json_write.baga"
@@ -57,17 +58,30 @@ fn oauth_pg_open(kind: i64) -> OrmDb !Net !IO !Random {
 
 // Source of truth for the per-connection workers: env with the same
 // defaults as demo.baga (go_bg can only carry the fd).
+fn oauth_port_env(name: str, def: i64) -> i64 !IO {
+    let s = env(name)?
+    if s == "" {
+        return def
+    }
+    let p = parse_int(s)
+    if p < 1 || p > 65535 {
+        return def
+    }
+    return p
+}
+
+fn oa_qparam(req: Request, name: str) -> str {
+    let p = http_path(req)
+    let q = str_find(p, "?")
+    if q < 0 {
+        return ""
+    }
+    return query_get(query_parse(substr(p, q + 1, len(p))), name)
+}
+
 fn oauth_cfg_env() -> OAuthCfg !IO {
-    let mut pp: i64 = 18690
-    let s = env("OAUTH_PORT")?
-    if s != "" && parse_int(s) > 0 {
-        pp = parse_int(s)
-    }
-    let mut vp: i64 = 18691
-    let s2 = env("OAUTH_PROVIDER_PORT")?
-    if s2 != "" && parse_int(s2) > 0 {
-        vp = parse_int(s2)
-    }
+    let pp = oauth_port_env("OAUTH_PORT", 18690)?
+    let vp = oauth_port_env("OAUTH_PROVIDER_PORT", 18691)?
     let mut secret = env("OAUTH_SECRET")?
     if secret == "" {
         secret = "dev-secret"
@@ -212,11 +226,11 @@ fn oauth_provider_http(req: Request, st: OAuthStore, db: OrmDb, cfg: OAuthCfg) -
         return http_json_response(200, "{\"status\":\"ok\"}")
     }
     if m == "GET" && p == "/oauth/authorize" {
-        let cid = http_query_param(req, "client_id")
-        let redir = url_decode(http_query_param(req, "redirect_uri"))
-        let state = http_query_param(req, "state")
-        let mut sub = http_query_param(req, "sub")
-        let mut scope = http_query_param(req, "scope")
+        let cid = oa_qparam(req, "client_id")
+        let redir = oa_qparam(req, "redirect_uri")
+        let state = oa_qparam(req, "state")
+        let mut sub = oa_qparam(req, "sub")
+        let mut scope = oa_qparam(req, "scope")
         if sub == "" { sub = "user" }
         if scope == "" { scope = "read" }
         if cid != cfg.client_id {
@@ -226,10 +240,12 @@ fn oauth_provider_http(req: Request, st: OAuthStore, db: OrmDb, cfg: OAuthCfg) -
             return http_json_response(400, "{\"error\":\"invalid_request\",\"error_description\":\"redirect_uri mismatch\"}")
         }
         let code = oa_issue_code(st, db, cfg, cid, sub, scope)?
-        let mut loc = concat(concat(redir, "?code="), code)
+        let mut q = query_new()
+        q = query_add(q, "code", code)
         if state != "" {
-            loc = concat(loc, concat("&state=", state))
+            q = query_add(q, "state", state)
         }
+        let loc = concat(concat(redir, "?"), query_encode(q))
         return http_set_header(http_response(302, ""), "Location", loc)
     }
     if m == "POST" && p == "/oauth/token" {
@@ -241,11 +257,12 @@ fn oauth_provider_http(req: Request, st: OAuthStore, db: OrmDb, cfg: OAuthCfg) -
         if payload == "" {
             return http_json_response(401, "{\"error\":\"invalid_token\"}")
         }
-        let mut j = "{"
-        j = concat(j, oa_jpair("sub", oa_rec_str(payload, "sub")))
-        j = concat(j, concat(",", oa_jpair("scope", oa_rec_str(payload, "scope"))))
-        j = concat(j, "}")
-        return http_json_response(200, j)
+        let mut j = buf_from("{")
+        j = buf_push(j, oa_jpair("sub", oa_rec_str(payload, "sub")))
+        j = buf_push_chr(j, 44)
+        j = buf_push(j, oa_jpair("scope", oa_rec_str(payload, "scope")))
+        j = buf_push_chr(j, 125)
+        return http_json_response(200, buf_str(j))
     }
     return http_json_response(404, "{\"error\":\"not found\"}")
 }
@@ -337,8 +354,8 @@ fn oauth_proxy_http(req: Request, st: ProxyStore, db: OrmDb, cfg: OAuthCfg) -> R
         return http_set_header(http_response(302, ""), "Location", px_authorize_url(cfg, state))
     }
     if m == "GET" && p == "/callback" {
-        let state = http_query_param(req, "state")
-        let code = http_query_param(req, "code")
+        let state = oa_qparam(req, "state")
+        let code = oa_qparam(req, "code")
         // one-time CSRF guard (map for kind 0, oauth_states for kind 1)
         if state == "" || px_state_take(st, db, state)? == 0 {
             return http_json_response(400, "{\"error\":\"bad_state\"}")

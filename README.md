@@ -83,12 +83,12 @@ In dev (in-memory) mode both nodes stay serial.
 
 ## Honest limits
 
-See [`gaps.md`](gaps.md): plain HTTP only (O1/TLS-G6); no URL
-percent-coding in std (O2); the in-memory backend keeps JSON records in
-maps (L4, O3); `TokenReply`/`PxTokens` are L3 stand-ins (O4); nodes stay
-serial — the CSRF `states` map is the last thing keeping them from a
-worker pool (O5); per-connection DB costs a SCRAM handshake per request
-(O7).
+See [`gaps.md`](gaps.md): plain HTTP only (O1/TLS-G6). Query/form values
+go through `querybaga` (`+` / `%XX`). Bearer is fail-closed via
+`jwt_accept_hs256` (`iss=oauthbaga`, case-insensitive scheme). Ports are
+clamped to 1..65535. In-memory backend still stores JSON records in maps
+(L4, O3). `TokenReply`/`PxTokens` are L3 stand-ins (O4). Dev mode stays
+serial; PG mode has workers / `OAUTH_WORKERS` pool (O5/O7).
 
 ## License
 
