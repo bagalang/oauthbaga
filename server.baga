@@ -166,6 +166,7 @@ fn oauth_provider_pool_worker(ch: i64) -> i64 !IO !Net !Time !Random !Par {
         let p = chan_recv2(ch)
         let st2 = cell2_0(p)
         let fd = cell2_1(p)
+        cell2_free(p)
         if st2 == 0 || fd < 0 {
             running = 0
         } else {
@@ -196,6 +197,7 @@ fn oauth_proxy_pool_worker(ch: i64) -> i64 !IO !Net !Time !Random !Par {
         let p = chan_recv2(ch)
         let st2 = cell2_0(p)
         let fd = cell2_1(p)
+        cell2_free(p)
         if st2 == 0 || fd < 0 {
             running = 0
         } else {
